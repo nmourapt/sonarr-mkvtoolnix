@@ -16,17 +16,19 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Get latest autobrr release version
+    - name: Get latest Sonarr container release version
       id: get_release
       run: |
-        latest_version=$(curl -s https://api.github.com/repos/autobrr/autobrr/releases/latest | jq -r .tag_name)
+        latest_version=$(curl -s -H "Accept: application/vnd.github+json" \
+          -u "${{ github.actor }}:${{ secrets.GHCR_TOKEN }}" \
+          "https://api.github.com/orgs/hotio/packages/container/sonarr/versions" | jq -r '.[0].metadata.container.tags[] | select(test("^release-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"))' | sed 's/release-//')
         echo "latest_version=$latest_version" >> $GITHUB_ENV
 
     - name: Check existing image
       id: check_image
       run: |
         existing_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-          https://api.github.com/user/packages/container/autobrr-qbitrace/versions | \
+          https://api.github.com/user/packages/container/sonarr-mkvtoolnix/versions | \
           jq -r '.[0].metadata.container.tags[] | select(. != "latest")' | head -n1)
         
         if [ "$existing_version" = "${{ env.latest_version }}" ]; then
@@ -65,5 +67,5 @@ jobs:
         curl -X POST \
         -H "Waf-bypass: ${{ secrets.WAF_BYPASS }}" \
         -F "title=New Docker Image Pushed" \
-        -F "message=A new Docker image for autobrr-qbitrace version ${latest_version} has been pushed to GHCR." \
+        -F "message=A new Docker image for sonarr-mkvtoolnix version ${latest_version} has been pushed to GHCR." \
         ${{ secrets.GOTIFY_WEBHOOK_URL }}
