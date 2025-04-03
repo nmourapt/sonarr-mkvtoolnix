@@ -33,7 +33,7 @@ jobs:
         
         if [ "$existing_version" = "${{ env.latest_version }}" ]; then
           echo "Image is up to date. Skipping build."
-          echo "skip_build=false" >> $GITHUB_ENV
+          echo "skip_build=true" >> $GITHUB_ENV
         else
           echo "New version detected. Proceeding with build."
           echo "skip_build=false" >> $GITHUB_ENV
