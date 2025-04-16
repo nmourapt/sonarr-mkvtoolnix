@@ -21,7 +21,7 @@ jobs:
       run: |
         latest_version=$(curl -s -H "Accept: application/vnd.github+json" \
           -u "${{ github.actor }}:${{ secrets.GHCR_TOKEN }}" \
-          "https://api.github.com/orgs/hotio/packages/container/sonarr/versions?per_page=100" | jq -r '.[0].metadata.container.tags[] | select(test("^release-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"))' | sed 's/release-//')
+          "https://api.github.com/orgs/hotio/packages/container/sonarr/versions" | jq -r '.[0].metadata.container.tags[] | select(test("^release-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"))' | sed 's/release-//')
         echo "latest_version=$latest_version" >> $GITHUB_ENV
 
     - name: Check existing image
@@ -50,22 +50,16 @@ jobs:
     - name: Build and Tag Docker Image
       if: env.skip_build == 'false'
       run: |
-        # Build the image with version and latest tags
-        echo "Building Docker image for version: ${env.latest_version}"
-        docker build . -t ghcr.io/${{ github.repository }}:${{ env.latest_version }} -t ghcr.io/${{ github.repository }}:latest
-
+        echo "Building Docker image for version: $latest_version"
+        docker build . -t ghcr.io/${{ github.repository }}:$latest_version -t ghcr.io/${{ github.repository }}:latest
+  
     - name: Push Version Tag
       if: env.skip_build == 'false'
-      run: |
-        echo "Pushing version tag: ${env.latest_version}"
-        docker push ghcr.io/${{ github.repository }}:${{ env.latest_version }}
-
+      run: docker push ghcr.io/${{ github.repository }}:${{ env.latest_version }}
+  
     - name: Push Latest Tag
       if: env.skip_build == 'false'
-      run: |
-        echo "Pushing latest tag"
-        docker push ghcr.io/${{ github.repository }}:latest
-
+      run: docker push ghcr.io/${{ github.repository }}:latest
   
     - name: Send Gotify Notification
       if: env.skip_build == 'false'
@@ -73,5 +67,5 @@ jobs:
         curl -X POST \
         -H "Waf-bypass: ${{ secrets.WAF_BYPASS }}" \
         -F "title=New Docker Image Pushed" \
-        -F "message=A new Docker image for sonarr-mkvtoolnix version ${latest_version} has been pushed to GHCR." \
+        -F "message=A new Docker image for sonarr-mkvtoolnix version $latest_version has been pushed to GHCR." \
         ${{ secrets.GOTIFY_WEBHOOK_URL }}
