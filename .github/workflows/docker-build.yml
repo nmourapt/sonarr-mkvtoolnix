@@ -17,14 +17,24 @@ jobs:
     - name: Get latest Sonarr container release version
       id: get_release
       run: |
-        latest_version=$(curl -s -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/orgs/hotio/packages/container/sonarr/versions" | \
+        # Debug: First check the API response
+        echo "Fetching package versions..."
+        response=$(curl -s -H "Accept: application/vnd.github+json" \
+          -u "${{ github.actor }}:${{ secrets.GHCR_TOKEN }}" \
+          "https://api.github.com/orgs/hotio/packages/container/sonarr/versions")
+        
+        echo "API Response (first 500 chars):"
+        echo "$response" | head -c 500
+        
+        # Extract version
+        latest_version=$(echo "$response" | \
           jq -r '.[0].metadata.container.tags[] | select(test("^release-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"))' | \
           sed 's/release-//' | head -n1)
         
         if [ -z "$latest_version" ]; then
-          echo "Failed to get latest version"
+          echo "Failed to extract version from API response"
+          echo "Full response:"
+          echo "$response"
           exit 1
         fi
         
@@ -35,7 +45,7 @@ jobs:
     - name: Check existing image
       id: check_image
       run: |
-        existing_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+        existing_version=$(curl -s -H "Authorization: Bearer ${{ secrets.GHCR_TOKEN }}" \
           "https://api.github.com/user/packages/container/sonarr-mkvtoolnix/versions" | \
           jq -r '.[0].metadata.container.tags[] | select(. != "latest")' | head -n1)
         
@@ -62,7 +72,7 @@ jobs:
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        password: ${{ secrets.GHCR_TOKEN }}
         
     - name: Build and Tag Docker Image
       if: steps.check_image.outputs.skip_build == 'false'
