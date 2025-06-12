@@ -23,18 +23,17 @@ jobs:
           -u "${{ github.actor }}:${{ secrets.GHCR_TOKEN }}" \
           "https://api.github.com/orgs/hotio/packages/container/sonarr/versions")
         
-        echo "API Response (first 500 chars):"
-        echo "$response" | head -c 500
+        echo "API Response received, processing..."
         
-        # Extract version
+        # Extract version - search through ALL versions for release tags
         latest_version=$(echo "$response" | \
-          jq -r '.[0].metadata.container.tags[] | select(test("^release-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"))' | \
+          jq -r '.[] | select(.metadata.container.tags[]? | test("^release-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$")) | .metadata.container.tags[] | select(test("^release-[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$"))' | \
           sed 's/release-//' | head -n1)
         
         if [ -z "$latest_version" ]; then
           echo "Failed to extract version from API response"
-          echo "Full response:"
-          echo "$response"
+          echo "Looking for release tags in response..."
+          echo "$response" | jq -r '.[] | .metadata.container.tags[]?' | grep -E "^release-" | head -5
           exit 1
         fi
         
